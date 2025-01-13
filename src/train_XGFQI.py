@@ -1,6 +1,6 @@
 from gymnasium.wrappers import TimeLimit
 from env_hiv import HIVPatient
-from fast_env import FastHIVPatient
+# from fast_env import FastHIVPatient
 import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
@@ -36,7 +36,7 @@ class ProjectAgent(Agent):
         q_values = np.zeros(len(states))
         prev_q_values = np.zeros_like(q_values)
 
-        for iteration in range(self.max_iterations):
+        for iteration in range(self.max_iterations + 1):
             print(f"Iteration {iteration + 1} of {self.max_iterations}")
 
             # Prepare inputs for training
@@ -96,7 +96,7 @@ class ProjectAgent(Agent):
             obs = env.reset()[0]
             episode_reward = 0
             for _ in range(200):
-                action = self.predict_action(obs)
+                action = self.act(obs)
                 obs, reward, done, _, _ = env.step(action)
                 episode_reward += reward
             total_rewards.append(episode_reward)
@@ -122,10 +122,10 @@ class ProjectAgent(Agent):
 # Train the agent
 if __name__ == "__main__":
     env = TimeLimit(env=HIVPatient(domain_randomization=False), max_episode_steps=200)
-    fast_env = TimeLimit(env=FastHIVPatient(domain_randomization=False), max_episode_steps=200)
+    fast_env = None # TimeLimit(env=FastHIVPatient(domain_randomization=False), max_episode_steps=200)
 
     agent = ProjectAgent(state_dim=6, action_dim=4)
-    train = False 
+    train = True 
     if train:
         transitions = []
         for _ in range(30):
