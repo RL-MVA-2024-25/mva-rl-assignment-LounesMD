@@ -6,7 +6,9 @@ import xgboost as xgb
 from sklearn.model_selection import train_test_split
 import os 
 
+from fast_env import FastHIVPatient
 from interface import Agent
+from tqdm import tqdm
 
 class ProjectAgent(Agent):
     def __init__(self, state_dim=6, action_dim=4, gamma=0.99, max_iterations=400, epsilon_mean=0.005, epsilon_infinity=0.05):
@@ -33,13 +35,7 @@ class ProjectAgent(Agent):
         rewards = np.array(rewards)
         next_states = np.array(next_states)
 
-        q_values = np.zeros(len(states))
-        prev_q_values = np.zeros_like(q_values)
-
         for iteration in range(self.max_iterations + 1):
-            print(f"Iteration {iteration + 1} of {self.max_iterations}")
-
-            # Prepare inputs for training
             inputs = np.hstack((states, actions))
             if iteration > 0:
                 next_q_values = self.q_model.predict(np.hstack([
@@ -58,23 +54,9 @@ class ProjectAgent(Agent):
                 verbose=False
             )
 
-            # Update Q-values for convergence check
-            q_values = self.q_model.predict(inputs)
-            mean_diff = np.mean(np.abs(q_values - prev_q_values))
-            max_diff = np.max(np.abs(q_values - prev_q_values))
-            print(f"Mean Q difference: {mean_diff}, Infinity norm: {max_diff}")
-
-            # Performance Monitoring
-            if eval_env and ((iteration) % 100 == 0):
+            if eval_env and ((iteration) % 50 == 0):
                 eval_rewards = self.evaluate_policy(eval_env, eval_episodes)
                 print(f"Evaluation Reward after Iteration {iteration + 1}: {np.mean(eval_rewards)}")
-
-            if mean_diff < self.epsilon_mean and max_diff < self.epsilon_infinity:
-                print("Convergence criteria met!")
-                break
-
-            prev_q_values = q_values.copy()
-        # return q_values
 
     def act(self, state):
         """
@@ -97,7 +79,7 @@ class ProjectAgent(Agent):
             episode_reward = 0
             for _ in range(200):
                 action = self.act(obs)
-                obs, reward, done, _, _ = env.step(action)
+                obs, reward, _, _, _ = env.step(action)
                 episode_reward += reward
             total_rewards.append(episode_reward)
         return total_rewards
@@ -121,11 +103,10 @@ class ProjectAgent(Agent):
 
 # Train the agent
 if __name__ == "__main__":
-    env = TimeLimit(env=HIVPatient(domain_randomization=False), max_episode_steps=200)
-    fast_env = None # TimeLimit(env=FastHIVPatient(domain_randomization=False), max_episode_steps=200)
+    fast_env = TimeLimit(env=FastHIVPatient(domain_randomization=True), max_episode_steps=200)
 
     agent = ProjectAgent(state_dim=6, action_dim=4)
-    train = True 
+    train = False
     if train:
         transitions = []
         for _ in range(30):
@@ -136,7 +117,7 @@ if __name__ == "__main__":
                 transitions.append((obs, action, reward, next_obs))        
                 obs = next_obs
 
-        for _ in range(40):
+        for _ in tqdm(range(11)):
             res = agent.fit(transitions, eval_env=fast_env, eval_episodes=5)
             for _ in range(30):
                 obs = fast_env.reset()[0]
@@ -146,4 +127,4 @@ if __name__ == "__main__":
                     transitions.append((obs, action, reward, next_obs))        
                     obs = next_obs
     
-    agent.load("q_model.json")
+    agent.save("q_model.json")
