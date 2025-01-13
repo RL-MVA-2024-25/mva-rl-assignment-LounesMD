@@ -1,6 +1,4 @@
 from gymnasium.wrappers import TimeLimit
-from env_hiv import HIVPatient
-# from fast_env import FastHIVPatient
 import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
